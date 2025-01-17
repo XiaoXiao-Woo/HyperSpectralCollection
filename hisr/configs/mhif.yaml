@@ -1,0 +1,12 @@
+defaults:
+  - runtime
+  - datasets_node02
+
+task: "pansharpening"
+scale: [4]
+best_prec1: 10000
+best_prec5: 10000
+metrics: { "train": "loss", "val": "PSNR", "test": "PSNR" }
+save_fmt: ["png", "mat"] # options: mat, not mat
+test: "reduce" # options: reduce, full experiment
+test_samplers_per_gpu: 1
