@@ -34,7 +34,7 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
 
     _models = {}
 
-    def __init__(self, device=None, model=None, criterion=None):
+    def __init__(self, device=None, model=None, criterion=None, logger=None):
         super(HISRModel, self).__init__()
         self.model = model
         self.criterion = criterion
@@ -45,7 +45,10 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
                     self.model.module, f"forward_{self._name}"
                 )
             else:
-                self.model.forward_task = getattr(self.model, f"forward_{self._name}")
+                try:
+                    self.model.forward_task = getattr(self.model, f"forward_{self._name}")
+                except Exception as e:
+                    print(e)
 
     def __init_subclass__(cls, name="", **kwargs):
 
@@ -117,47 +120,3 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
 
         return {"log_vars": metrics}
 
-
-# class HsPansharpeningModel(ModelDispatcher, name="hsp"):
-
-#     _models = {}
-
-#     def __init__(self, model=None, criterion=None):
-#         super(HsPansharpeningModel, self).__init__()
-#         self.model = model
-#         self.criterion = criterion
-
-#     def __init_subclass__(cls, name="", **kwargs):
-
-#         # print(name, cls)
-#         if name != "":
-#             cls._models[name] = cls
-#             cls._name = name
-#         else:
-#             cls._models[cls.__name__] = cls
-#             cls._name = cls.__name_
-
-#     def train_step(self, *args, **kwargs):
-
-#         return self.model.train_step(args[0], **kwargs)
-
-#         # loss_backward = loss.pop('loss')
-#         # log_vars.update(**loss)
-#         # return {'loss': loss['loss'], 'log_vars': log_vars, 'num_samples': len(args[0]['pan'])}
-
-#     def val_step(self, *args, **kwargs):
-#         sr, gt = self.model["PAN2MS"].val_step(*args, **kwargs)
-#         result_our = torch.squeeze(sr).permute(1, 2, 0)
-#         result_our = result_our * 2047
-#         metrics = analysis_accu(gt.to(self.device).squeeze(0), result_our, 4)
-
-#         if kwargs["idx"] not in [220, 231, 236, 469, 766, 914]:
-#             if kwargs["save_fmt"] is not None:
-#                 save_results(
-#                     kwargs["idx"],
-#                     kwargs["save_dir"],
-#                     kwargs["filename"],
-#                     kwargs["save_fmt"],
-#                     result_our,
-#                 )
-#         return {"log_vars": metrics}

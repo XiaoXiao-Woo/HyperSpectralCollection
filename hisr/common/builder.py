@@ -10,10 +10,10 @@ import udl_vis.Basis.option
 
 import hisr.models
 
-def build_model(cfg=None):
+def build_model(cfg=None, logger=None):
     from udl_vis.Basis.python_sub_class import ModelDispatcher
 
-    return ModelDispatcher.build_model_from_task(cfg)
+    return ModelDispatcher.build_model_from_task(cfg, logger)
 
 def getDataSession(cfg):
 
