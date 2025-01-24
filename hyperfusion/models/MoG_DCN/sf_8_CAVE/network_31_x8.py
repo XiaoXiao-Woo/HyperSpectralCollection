@@ -400,10 +400,6 @@ class VSR_CAS(torch.nn.Module):
 
         # x = bicubic_interp_2d(input, [label_h1, label_h2])
         x = torch.nn.functional.interpolate(LR, scale_factor=self.up_factor, mode='bicubic', align_corners=False)
-        # _, fft_BT = para_setting('uniform_blur', self.up_factor, [self.patch_size, self.patch_size])
-        # fft_BT = torch.cat(
-        #    (torch.Tensor(np.real(fft_BT)).unsqueeze(2), torch.Tensor(np.imag(fft_BT)).unsqueeze(2)), 2).cuda()
-        # x = self.UP( LR , self.up_factor ,fft_BT)
         y = LR
 
         # for i in range(0, 3):
@@ -482,30 +478,26 @@ class VSR_CAS(torch.nn.Module):
         self.criterion = criterion
 
 
-def build(args):
-    scheduler = None
-    mode = "one"
-    loss1 = nn.L1Loss().cuda()
-    weight_dict = {'Loss': 1}
-    losses = {'Loss': loss1}
-    criterion = SetCriterion(losses, weight_dict)
-    data = sio.loadmat('./HISR/MoGDCN/P.mat')
-    P = data['P']
-    P = torch.FloatTensor(P)
-    up_factor = 8
-    channel = 31
-    patch_size = 512
-    WEIGHT_DECAY = 1e-8  # params of ADAM
-    model = VSR_CAS(channel0=channel, factor=up_factor, P=P, patch_size=patch_size).cuda()
+from hisr.models.base_model import HISRModel
+from hisr.common.metrics import SetCriterion
+from torch import optim
+from torch import nn
 
-    num_params = 0
-    for param in VSR_CAS(channel0=channel, factor=up_factor, P=P, patch_size=patch_size).parameters():
-        num_params += param.numel()
-    print('[Network %s] Total number of parameters : %.3f M' % ('mogdcn', num_params / 1e6))
-    model.set_metrics(criterion)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=WEIGHT_DECAY)
 
-    return model, criterion, optimizer, scheduler
+class build_MoG_DCN(HISRModel, name="MoG_DCN"):
+    def __call__(self, cfg):
+        loss = nn.L1Loss(size_average=True).cuda()  ## Define the Loss function
+        weight_dict = {"loss": 1}
+        losses = {"loss": loss}
+        criterion = SetCriterion(losses, weight_dict)
+        model = VSR_CAS(criterion, 31, cfg.scale).cuda()
+        optimizer = optim.Adam(
+            model.parameters(), lr=cfg.lr, weight_decay=1e-8
+        )  ## optimizer 1: Adam
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500)
+        scheduler.by_epoch = True
+
+        return model, criterion, optimizer, scheduler
 
 
 if __name__ == '__main__':
