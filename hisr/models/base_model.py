@@ -99,7 +99,9 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
                 flag_cut_bounds=False,
             )
             metrics.update(metrics)
+            
         if kwargs["save_dir"] is not None:
+            os.makedirs(kwargs["save_dir"], exist_ok=True)
             if kwargs["save_fmt"] == "mat":
                 save_name = kwargs["save_dir"] + f"/output_mulExm_{kwargs['idx']}.mat"
                 sio.savemat(save_name, {"output": sr.permute(0, 2, 3, 1).cpu().numpy()})
