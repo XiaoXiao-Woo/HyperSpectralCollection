@@ -11,4 +11,5 @@ from . import models
 from . import common
 from .common.builder import build_model, getDataSession
 from udl_vis import trainer, TaskDispatcher
-from .python_scripts.accelerate_mhif import hydra_run
+from .python_scripts.accelerate_mhif import accelerate_run
+from .python_scripts.run_naive_mhif import torch_run

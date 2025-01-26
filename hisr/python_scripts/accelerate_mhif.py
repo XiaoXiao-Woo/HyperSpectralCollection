@@ -2,7 +2,8 @@ from hisr import build_model, getDataSession
 from hisr.models.base_model import HISRModel
 from hisr import build_model as build_mhif_model
 
-def hydra_run(full_config_path="configs/config", import_path=None, build_model=None):
+def accelerate_run(full_config_path="configs/config", import_path=None, build_model=None, 
+              backend="accelerate", launcher="accelerate"):
     from udl_vis.AutoDL.trainer import run_hydra
 
     run_hydra(
@@ -11,8 +12,10 @@ def hydra_run(full_config_path="configs/config", import_path=None, build_model=N
         taskModel=HISRModel,
         build_model=build_model if build_model is not None else build_mhif_model,
         getDataSession=getDataSession,
+        backend=backend,
+        launcher=launcher,
     )
 
 
 if __name__ == "__main__":
-    hydra_run(full_config_path="configs/config")
+    accelerate_run(full_config_path="configs/config")

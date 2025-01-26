@@ -41,9 +41,12 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
         self.device = device
         if model is not None:
             if hasattr(self.model, "module"):
-                self.model.module.forward_task = getattr(
-                    self.model.module, f"forward_{self._name}"
-                )
+                try:
+                    self.model.module.forward_task = getattr(
+                        self.model.module, f"forward_{self._name}"
+                    )
+                except Exception as e:
+                    print(e)
             else:
                 try:
                     self.model.forward_task = getattr(self.model, f"forward_{self._name}")
@@ -62,21 +65,13 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
             cls._name = cls.__name__
             # warnings.warn(f'Creating a subclass of MetaModel {cls.__name__} with no name.')
 
-    def train_step(self, *args, **kwargs):
+    def train_step(self, data, **kwargs):
         log_vars = {}
-        data = args[0]
-        data = {k: v.to(self.device) for k, v in data.items()}
-        # print(f"gt.device: {data['gt'].device}")
+        mode = kwargs.pop("mode")
+        log_vars = self.model(data, mode, **kwargs)
+        metrics = {"loss": log_vars["loss"], "log_vars": log_vars}
 
-        # sr = self.model.train_step(data, **kwargs)
-        # with torch.no_grad():
-        #     log_vars.update(analysis_accu(data['gt'].cuda(), sr, 4, choices=4))
-        # loss = self.criterion(sr, data['gt'])
-        # log_vars.update(loss=loss["loss"])
-        # return {"loss": loss["loss"], "log_vars": log_vars}
-        log_vars = self.model(data, **kwargs)
-
-        return {"loss": log_vars["loss"], "log_vars": log_vars}
+        return metrics
 
     def val_step(self, *args, **kwargs):
         data = args[0]
@@ -119,4 +114,3 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
         #     sio.savemat(save_name, {'output': sr.permute(0, 2, 3, 1).numpy()})
 
         return {"log_vars": metrics}
-

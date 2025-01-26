@@ -19,7 +19,7 @@ if __name__ == '__main__':
         python_requires=">=3.7",
         entry_points={  # 如果有命令行工具
             "console_scripts": [
-                "accelerate_mhif = hisr.python_scripts.accelerate_mhif:hydra_run",
+                "accelerate_mhif = hisr.python_scripts.accelerate_mhif:accelerate_run",
             ],
         },
         install_requires=[

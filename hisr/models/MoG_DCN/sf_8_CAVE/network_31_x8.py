@@ -3,11 +3,8 @@ import torch.nn.functional as F
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from clean_util import H_z, HT_y, para_setting
-from UDL.pansharpening.common.evaluate import analysis_accu
-from UDL.Basis.pytorch_msssim.cal_ssim import SSIM
+# from clean_util import H_z, HT_y, para_setting
 import torch.nn as nn
-from UDL.Basis.criterion_metrics import *
 import scipy.io as sio
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
@@ -412,7 +409,7 @@ class VSR_CAS(torch.nn.Module):
         x = self.recon(conv_out, x, y, RGB, id_layer=3)
 
         z = x
-        v, fe2 = self.spatial(self.fe_conv3(torch.cat((self.fe_conv1(z), fe), 1)))
+        v, fe2 = self.spatial(self.fe_conv3(torch.cat((self.fe_conv1(z), fe1), 1)))
         v = v + z
         z = self.recon_noisy(z, x, v, RGB, 0)
         conv_out, fe3 = self.spatial(self.fe_conv4(torch.cat((self.fe_conv1(z), fe2), 1)))
@@ -501,18 +498,18 @@ class build_MoG_DCN(HISRModel, name="MoG_DCN"):
 
 
 if __name__ == '__main__':
-    from torchsummary import summary
+    # from torchsummary import summary
 
     LR = torch.randn(1, 31, 16, 16).cuda()
     RGB = torch.randn(1, 3, 128, 128).cuda()
-    data = sio.loadmat('./P.mat')
-    P = data['P']
-    P = torch.FloatTensor(P)
+    # data = sio.loadmat('./P.mat')
+    # P = data['P']
+    # P = torch.FloatTensor(P)
     up_factor = 8
     channel = 31
     patch_size = 128
     WEIGHT_DECAY = 1e-8  # params of ADAM
-    model = VSR_CAS(channel0=channel, factor=up_factor, P=P, patch_size=patch_size).cuda()
+    model = VSR_CAS(channel0=channel, factor=up_factor, P=None, patch_size=patch_size).cuda()
     pred = model(LR, RGB)
     print(pred.shape)
     # summary(model, input_size=[(31, 16, 16), (3, 64, 64)], batch_size=1)
