@@ -68,6 +68,11 @@ class HISRModel(ModelDispatcher, name=["hisr", "mhif", "hsp"]):
     def train_step(self, data, **kwargs):
         log_vars = {}
         mode = kwargs.pop("mode")
+        for k in list(data.keys()):
+            if hasattr(data[k], "cuda"):
+                data[k] = data[k].to(self.device)
+            else:
+                kwargs[k] = data.pop(k)
         log_vars = self.model(data, mode, **kwargs)
         metrics = {"loss": log_vars["loss"], "log_vars": log_vars}
 

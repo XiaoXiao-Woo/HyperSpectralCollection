@@ -3,7 +3,7 @@ from hisr.models.base_model import HISRModel
 from hisr import build_model as build_mhif_model
 
 def accelerate_run(full_config_path="configs/config", import_path=None, build_model=None, 
-              backend="accelerate", launcher="accelerate"):
+              backend="accelerate", launcher="accelerate", **cfg_kwargs):
     from udl_vis.AutoDL.trainer import run_hydra
 
     run_hydra(
@@ -14,6 +14,7 @@ def accelerate_run(full_config_path="configs/config", import_path=None, build_mo
         getDataSession=getDataSession,
         backend=backend,
         launcher=launcher,
+        **cfg_kwargs
     )
 
 

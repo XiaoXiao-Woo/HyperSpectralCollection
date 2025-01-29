@@ -1,13 +1,14 @@
+# coding=UTF-8
+
 import torch
 import torch.nn.functional as F
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-# from clean_util import H_z, HT_y, para_setting
 import torch.nn as nn
 import scipy.io as sio
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
+from torch import optim
+from udl_vis.Basis.module import PatchMergeModule
 
 """
 modify fast DVD(vedio denoising) 
@@ -18,11 +19,21 @@ class Encoding_Block(torch.nn.Module):
     def __init__(self, c_in):
         super(Encoding_Block, self).__init__()
 
-        self.conv1 = torch.nn.Conv2d(in_channels=c_in, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv2 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv3 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv4 = torch.nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=3 // 2)
-        self.conv5 = torch.nn.Conv2d(in_channels=128, out_channels=64, kernel_size=3, stride=2, padding=3 // 2)
+        self.conv1 = torch.nn.Conv2d(
+            in_channels=c_in, out_channels=64, kernel_size=3, padding=3 // 2
+        )
+        self.conv2 = torch.nn.Conv2d(
+            in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2
+        )
+        self.conv3 = torch.nn.Conv2d(
+            in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2
+        )
+        self.conv4 = torch.nn.Conv2d(
+            in_channels=64, out_channels=128, kernel_size=3, padding=3 // 2
+        )
+        self.conv5 = torch.nn.Conv2d(
+            in_channels=128, out_channels=64, kernel_size=3, stride=2, padding=3 // 2
+        )
 
         self.act = torch.nn.PReLU()
 
@@ -47,10 +58,18 @@ class Encoding_Block_End(torch.nn.Module):
     def __init__(self, c_in=64):
         super(Encoding_Block_End, self).__init__()
 
-        self.conv1 = torch.nn.Conv2d(in_channels=c_in, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv2 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv3 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv4 = torch.nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=3 // 2)
+        self.conv1 = torch.nn.Conv2d(
+            in_channels=c_in, out_channels=64, kernel_size=3, padding=3 // 2
+        )
+        self.conv2 = torch.nn.Conv2d(
+            in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2
+        )
+        self.conv3 = torch.nn.Conv2d(
+            in_channels=64, out_channels=64, kernel_size=3, padding=3 // 2
+        )
+        self.conv4 = torch.nn.Conv2d(
+            in_channels=64, out_channels=128, kernel_size=3, padding=3 // 2
+        )
         self.act = torch.nn.PReLU()
         self.reset_parameters()
 
@@ -70,15 +89,23 @@ class Encoding_Block_End(torch.nn.Module):
 class Decoding_Block(torch.nn.Module):
     def __init__(self, c_in):
         super(Decoding_Block, self).__init__()
-        self.conv0 = torch.nn.Conv2d(in_channels=256, out_channels=128, kernel_size=3, padding=3 // 2)
-        self.conv1 = torch.nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2)
-        self.conv2 = torch.nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2)
+        self.conv0 = torch.nn.Conv2d(
+            in_channels=256, out_channels=128, kernel_size=3, padding=3 // 2
+        )
+        self.conv1 = torch.nn.Conv2d(
+            in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2
+        )
+        self.conv2 = torch.nn.Conv2d(
+            in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2
+        )
 
         self.conv3 = torch.nn.Conv2d(in_channels=128, out_channels=512, kernel_size=1)
         # self.conv4 = torch.nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=3 // 2)
         self.batch = 1
         # self.up = torch.nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1)
-        self.up = torch.nn.ConvTranspose2d(c_in, 128, kernel_size=3, stride=2, padding=3 // 2)
+        self.up = torch.nn.ConvTranspose2d(
+            c_in, 128, kernel_size=3, stride=2, padding=3 // 2
+        )
 
         self.act = torch.nn.PReLU()
         self.reset_parameters()
@@ -102,7 +129,10 @@ class Decoding_Block(torch.nn.Module):
 
     def forward(self, input, map):
 
-        up = self.up(input, output_size=[input.shape[0], input.shape[1], map.shape[2], map.shape[3]])
+        up = self.up(
+            input,
+            output_size=[input.shape[0], input.shape[1], map.shape[2], map.shape[3]],
+        )
         cat = torch.cat((up, map), 1)
         cat = self.act(self.conv0(cat))
         out1 = self.act(self.conv1(cat))
@@ -116,13 +146,23 @@ class Decoding_Block(torch.nn.Module):
 class Feature_Decoding_End(torch.nn.Module):
     def __init__(self, c_out):
         super(Feature_Decoding_End, self).__init__()
-        self.conv0 = torch.nn.Conv2d(in_channels=256, out_channels=128, kernel_size=3, padding=3 // 2)
-        self.conv1 = torch.nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2)
-        self.conv2 = torch.nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2)
+        self.conv0 = torch.nn.Conv2d(
+            in_channels=256, out_channels=128, kernel_size=3, padding=3 // 2
+        )
+        self.conv1 = torch.nn.Conv2d(
+            in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2
+        )
+        self.conv2 = torch.nn.Conv2d(
+            in_channels=128, out_channels=128, kernel_size=3, padding=3 // 2
+        )
 
-        self.conv3 = torch.nn.Conv2d(in_channels=128, out_channels=c_out, kernel_size=3, padding=3 // 2)
+        self.conv3 = torch.nn.Conv2d(
+            in_channels=128, out_channels=c_out, kernel_size=3, padding=3 // 2
+        )
         self.batch = 1
-        self.up = torch.nn.ConvTranspose2d(512, 128, kernel_size=3, stride=2, padding=3 // 2)
+        self.up = torch.nn.ConvTranspose2d(
+            512, 128, kernel_size=3, stride=2, padding=3 // 2
+        )
         self.act = torch.nn.PReLU()
         self.reset_parameters()
 
@@ -146,7 +186,10 @@ class Feature_Decoding_End(torch.nn.Module):
 
     def forward(self, input, map):
 
-        up = self.up(input, output_size=[input.shape[0], input.shape[1], map.shape[2], map.shape[3]])
+        up = self.up(
+            input,
+            output_size=[input.shape[0], input.shape[1], map.shape[2], map.shape[3]],
+        )
         cat = torch.cat((up, map), 1)
         cat = self.act(self.conv0(cat))
         out1 = self.act(self.conv1(cat))
@@ -170,7 +213,7 @@ class Unet_Spatial(torch.nn.Module):
         self.Decoding_block1 = Decoding_Block(128)
         self.Decoding_block2 = Decoding_Block(512)
         self.Decoding_block3 = Decoding_Block(512)
-        self.Decoding_block_End = Feature_Decoding_End(31)
+        self.Decoding_block_End = Feature_Decoding_End(cin)
 
         self.acti = torch.nn.PReLU()
         self.reset_parameters()
@@ -243,20 +286,15 @@ class Unet_Spectral(torch.nn.Module):
         return y
 
 
-class VSR_CAS(torch.nn.Module):
+class VSR_CAS(PatchMergeModule):
     """
     network of 'Burst Denoising with Kernel Prediction Networks'
     """
 
-    def __init__(self, channel0, factor, P, patch_size):
+    def __init__(self, factor):
         super(VSR_CAS, self).__init__()
 
-        self.channel0 = channel0
         self.up_factor = factor
-        self.patch_size = patch_size
-
-        self.P = torch.nn.Parameter(P)
-        self.P.requires_grad = False
         self.acti = torch.nn.PReLU()
 
         self.delta_0 = torch.nn.Parameter(torch.tensor(0.1))
@@ -275,35 +313,49 @@ class VSR_CAS(torch.nn.Module):
         self.eta_6 = torch.nn.Parameter(torch.tensor(0.9))
         self.spatial = Unet_Spatial(31)
         # self.spatial1 = Unet_Spatial(3)  # if no use then comment it out
-        self.fe_conv1 = torch.nn.Conv2d(in_channels=31, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.fe_conv2 = torch.nn.Conv2d(in_channels=192, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.fe_conv3 = torch.nn.Conv2d(in_channels=192, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.fe_conv4 = torch.nn.Conv2d(in_channels=192, out_channels=64, kernel_size=3, padding=3 // 2)
+        self.fe_conv1 = torch.nn.Conv2d(
+            in_channels=31, out_channels=64, kernel_size=3, padding=1
+        )
+        self.fe_conv2 = torch.nn.Conv2d(
+            in_channels=192, out_channels=64, kernel_size=3, padding=1
+        )
+        self.fe_conv3 = torch.nn.Conv2d(
+            in_channels=192, out_channels=64, kernel_size=3, padding=1
+        )
+        self.fe_conv4 = torch.nn.Conv2d(
+            in_channels=192, out_channels=64, kernel_size=3, padding=1
+        )
 
-        self.fe_conv5 = torch.nn.Conv2d(in_channels=320, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.fe_conv6 = torch.nn.Conv2d(in_channels=192, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.fe_conv7 = torch.nn.Conv2d(in_channels=448, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.fe_conv8 = torch.nn.Conv2d(in_channels=192, out_channels=64, kernel_size=3, padding=3 // 2)
-        self.conv_downsample = torch.nn.Conv2d(in_channels=31, out_channels=31, kernel_size=13, stride=8,
-                                               padding=13 // 2)
-        self.conv_upsample = torch.nn.ConvTranspose2d(in_channels=31, out_channels=31, kernel_size=13, stride=8,
-                                                      padding=13 // 2)
-        self.conv_torgb = torch.nn.Conv2d(in_channels=31, out_channels=3, kernel_size=3, stride=1, padding=3 // 2)
-        self.conv_tohsi = torch.nn.Conv2d(in_channels=3, out_channels=31, kernel_size=3, stride=1, padding=3 // 2)
+        self.fe_conv5 = torch.nn.Conv2d(
+            in_channels=320, out_channels=64, kernel_size=3, padding=1
+        )
+        self.fe_conv6 = torch.nn.Conv2d(
+            in_channels=192, out_channels=64, kernel_size=3, padding=1
+        )
+        self.fe_conv7 = torch.nn.Conv2d(
+            in_channels=448, out_channels=64, kernel_size=3, padding=1
+        )
+        self.fe_conv8 = torch.nn.Conv2d(
+            in_channels=192, out_channels=64, kernel_size=3, padding=1
+        )
+        self.conv_downsample = torch.nn.Conv2d(
+            in_channels=31, out_channels=31, kernel_size=7, stride=4, padding=7 // 2
+        )
+        self.conv_upsample = torch.nn.ConvTranspose2d(
+            in_channels=31, out_channels=31, kernel_size=7, stride=4, padding=7 // 2
+        )
+        self.conv_torgb = torch.nn.Conv2d(
+            in_channels=31, out_channels=3, kernel_size=3, stride=1, padding=1
+        )
+        self.conv_tohsi = torch.nn.Conv2d(
+            in_channels=3, out_channels=31, kernel_size=3, stride=1, padding=1
+        )
         # self.spatial2 = Unet_Spatial(3)  # if no use then comment it out
 
         # self.spectral = Unet_Spectral(31)
         self.reset_parameters()
 
-    def Down(self, z, factor, fft_B):
-        LR = H_z(z, factor, fft_B)
-        return LR
-
-    def UP(self, LR, factor, fft_BT):
-        HR = HT_y(LR, factor, fft_BT)
-        return HR
-
-    def recon_noisy(self, z, noisy, v, RGB, id_layer):
+    def recon_noisy(self, z, up, v, rgb, id_layer):
         if id_layer == 0:
             DELTA = self.delta_0
             ETA = self.eta_0
@@ -323,19 +375,20 @@ class VSR_CAS(torch.nn.Module):
             DELTA = self.delta_5
             ETA = self.eta_5
 
-        sz = z.shape
-        # err1 = RGB.reshape(sz[0], 3, sz[2] * sz[3]) - torch.matmul( self.P.transpose(0,1).unsqueeze(0) ,z.reshape(sz[0], sz[1], sz[2] * sz[3]))
-        err1 = RGB - self.conv_torgb(z)
-        # err1 = torch.matmul(self.P.unsqueeze(0), err1)
+        err1 = rgb - self.conv_torgb(z)
         err1 = self.conv_tohsi(err1)
-        # err1 = err1.reshape(sz)
-        err2 = noisy - ETA * v
-        err2 = err2.reshape(sz)
 
-        out = (1 - DELTA - DELTA * ETA) * z + DELTA * err1 + DELTA * err2
-        return out
+        # out = (1 - DELTA - DELTA * ETA) * z + DELTA * err1 + DELTA * err2
+        return DELTA * (err1 + up) + (1 - DELTA) * z - (DELTA * ETA) * (v + z)
 
-    def recon(self, features, recon, LR, RGB, id_layer):
+        # if ema:
+        #     if z is not None:
+        #         return DELTA * (err1 + up) + (1 - DELTA) * z - (DELTA * ETA) * (v + z)
+
+        #     else:
+        #         return z + DELTA * (err1 + err2)
+
+    def recon(self, features, recon, LR, RGB, id_layer, prox=True):
         if id_layer == 0:
             DELTA = self.delta_0
             ETA = self.eta_0
@@ -355,161 +408,147 @@ class VSR_CAS(torch.nn.Module):
             DELTA = self.delta_5
             ETA = self.eta_5
 
-        # fft_B, fft_BT = para_setting('gaussian_blur', self.up_factor, [self.patch_size, self.patch_size])
-        # fft_B = torch.cat((torch.Tensor(np.real(fft_B)).unsqueeze(2),
-        #                         torch.Tensor(np.imag(fft_B)).unsqueeze(2)), 2).cuda()
-        # fft_BT = torch.cat(
-        #     (torch.Tensor(np.real(fft_BT)).unsqueeze(2), torch.Tensor(np.imag(fft_BT)).unsqueeze(2)), 2) .cuda()
-        #
-        # recon_h1 = int(recon.shape[2])
-        # recon_h2 = int(recon.shape[3])
-
-        # down = self.Down(recon, self.up_factor , fft_B )
         sz = recon.shape
         down = self.conv_downsample(recon)
-        # err1 = self.UP(down - LR , self.up_factor ,fft_BT)
         err1 = self.conv_upsample(down - LR, output_size=sz)
 
-        # to_rgb = torch.matmul(self.P.transpose(0,1).unsqueeze(0)   , recon.reshape(sz[0], sz[1], sz[2] * sz[3]))
         to_rgb = self.conv_torgb(recon)
-        # err_rgb = RGB - to_rgb.reshape(sz[0], 3, sz[2] , sz[3])
         err_rgb = RGB - to_rgb
-        # err3    = torch.matmul(self.P.unsqueeze(0),err_rgb.reshape(sz[0], 3, sz[2] * sz[3]))
         err3 = self.conv_tohsi(err_rgb)
         err3 = err3.reshape(sz)
-        ################################################################
 
-        out = (1 - DELTA * ETA) * recon + DELTA * err3 + DELTA * err1 + DELTA * ETA * features
-        ################################################################
-        return out
+        # out = (1-DELTA*ETA)*recon +DELTA*err3 + DELTA*err1 + DELTA*ETA*features
+
+        if prox:
+            if features is not None:
+                return recon - DELTA * (err3 + err1) - ETA * (recon - features)
+            else:
+                return recon - DELTA * (err3 + err1)
 
     def reset_parameters(self):
         for m in self.modules():
             if isinstance(m, torch.nn.Conv2d):
                 torch.nn.init.xavier_normal_(m.weight)
 
-    def forward(self, LR, RGB):  # [batch_size ,3 ,7 ,270 ,480] ;
-        ## LR [1 31 6 6]
-        ## RGB [1 31 48 48]
+    def _forward_implem(self, up, hs, rgb):  # [batch_size ,3 ,7 ,270 ,480] ;
+        # x: HSI_UP [1, 31, 48, 48]  [1, 31, 64, 64]
+        # y: LR [1 31 6 6] [1, 31, 16, 16]
+        # RGB [1 31 48 48] [1, 31, 64, 64]
 
-        label_h1 = int(LR.shape[2]) * self.up_factor
-        label_h2 = int(LR.shape[3]) * self.up_factor
-
-        # x = bicubic_interp_2d(input, [label_h1, label_h2])
-        x = torch.nn.functional.interpolate(LR, scale_factor=self.up_factor, mode='bicubic', align_corners=False)
-        y = LR
-
+        x = up
         # for i in range(0, 3):
         z = x
         v, fe = self.spatial(self.fe_conv1(z))
         v = v + z
-        z = self.recon_noisy(z, x, v, RGB, 0)
-        conv_out, fe1 = self.spatial(self.fe_conv2(torch.cat((self.fe_conv1(z), fe), 1)))
+        z = self.recon_noisy(z, up, v, rgb, 0)
+        conv_out, fe1 = self.spatial(
+            self.fe_conv2(torch.cat((self.fe_conv1(z), fe), 1))
+        )
         conv_out = conv_out + z
-        x = self.recon(conv_out, x, y, RGB, id_layer=3)
+
+        x = self.recon(conv_out, x, hs, rgb, id_layer=3)
 
         z = x
-        v, fe2 = self.spatial(self.fe_conv3(torch.cat((self.fe_conv1(z), fe1), 1)))
+        v, fe2 = self.spatial(self.fe_conv3(torch.cat((self.fe_conv1(z), fe), 1)))
         v = v + z
-        z = self.recon_noisy(z, x, v, RGB, 0)
-        conv_out, fe3 = self.spatial(self.fe_conv4(torch.cat((self.fe_conv1(z), fe2), 1)))
+        z = self.recon_noisy(z, x, v, rgb, 0)
+        conv_out, fe3 = self.spatial(
+            self.fe_conv4(torch.cat((self.fe_conv1(z), fe2), 1))
+        )
         conv_out = conv_out + z
-        x = self.recon(conv_out, x, y, RGB, id_layer=3)
+        x = self.recon(conv_out, x, hs, rgb, id_layer=3)
 
         z = x
         v, fe4 = self.spatial(self.fe_conv5(torch.cat((self.fe_conv1(z), fe, fe2), 1)))
         v = v + z
-        z = self.recon_noisy(z, x, v, RGB, 0)
-        conv_out, fe5 = self.spatial(self.fe_conv6(torch.cat((self.fe_conv1(z), fe4), 1)))
+        z = self.recon_noisy(z, x, v, rgb, 0)
+        conv_out, fe5 = self.spatial(
+            self.fe_conv6(torch.cat((self.fe_conv1(z), fe4), 1))
+        )
         conv_out = conv_out + z
-        x = self.recon(conv_out, x, y, RGB, id_layer=3)
+        x = self.recon(conv_out, x, hs, rgb, id_layer=3)
 
         z = x
-        v, fe6 = self.spatial(self.fe_conv7(torch.cat((self.fe_conv1(z), fe, fe2, fe4), 1)))
+        v, fe6 = self.spatial(
+            self.fe_conv7(torch.cat((self.fe_conv1(z), fe, fe2, fe4), 1))
+        )
         v = v + z
-        z = self.recon_noisy(z, x, v, RGB, 0)
+        z = self.recon_noisy(z, x, v, rgb, 0)
         conv_out, _ = self.spatial(self.fe_conv8(torch.cat((self.fe_conv1(z), fe6), 1)))
         conv_out = conv_out + z
 
         return conv_out
 
-    def name(self):
-        return ' net'
+    def train_step(self, data, *args, **kwargs):
+        gt = data.pop("gt")
+        data["hs"] = data.pop("lrhsi")
+        sr = self._forward_implem(**data)
+        loss_dicts = self.criterion(sr, gt, **kwargs)
 
-    def train_step(self, batch, *args, **kwargs):
-        gt, up, hsi, msi = batch['gt'].cuda(), \
-                           batch['up'].cuda(), \
-                           batch['lrhsi'].cuda(), \
-                           batch['rgb'].cuda()
-        sr = self(hsi, msi)
-        loss = self.criterion(sr, gt, *args, **kwargs)
-        log_vars = {}
-        with torch.no_grad():
-            metrics = analysis_accu(gt, sr, 4, choices=4)
-            log_vars.update(metrics)
+        return loss_dicts
 
-        return {'loss': loss, 'log_vars': log_vars}
+    def val_step(self, data, **kwargs):
+        data["hs"] = data.pop("lrhsi")
+        sr1 = self._forward_implem(**data)
+        return sr1
 
-    def eval_step(self, batch, *args, **kwargs):
-        gt, up, hsi, msi = batch['gt'].cuda(), \
-                           batch['up'].cuda(), \
-                           batch['lrhsi'].cuda(), \
-                           batch['rgb'].cuda()
-        # batch['lrhsi'].cuda(), \
-        print(gt.shape)
-        print(up.shape)
-        print(hsi.shape)
-        print(msi.shape)
-        # print(msi.shape)
-        sr1 = self.forward(hsi, msi)
-        # x = torch.cat((up, msi), 1)
-        # sr1 = self.forward_chop(x)
-        with torch.no_grad():
-            metrics = analysis_accu(gt[0].permute(1, 2, 0), sr1[0].permute(1, 2, 0), 4)
-            metrics.update(metrics)
+    def test_step(self, data, **kwargs):
 
-        return sr1, metrics
-
-    def set_metrics(self, criterion, rgb_range=1.0):
-        self.rgb_range = rgb_range
-        self.criterion = criterion
+        return self.val_step(data, **kwargs)
 
 
 from hisr.models.base_model import HISRModel
 from hisr.common.metrics import SetCriterion
+from udl_vis.Basis.metrics.cal_ssim import ssim
 from torch import optim
 from torch import nn
+from udl_vis.Basis.optim import LRScheduler, get_optimizer
 
 
-class build_MoG_DCN(HISRModel, name="MoG_DCN"):
-    def __call__(self, cfg):
+class build_MoGDCN(HISRModel, name="MoGDCN"):
+    def __call__(self, cfg, logger):
         loss = nn.L1Loss(size_average=True).cuda()  ## Define the Loss function
-        weight_dict = {"loss": 1}
-        losses = {"loss": loss}
+        loss = nn.L1Loss(size_average=True)  ## Define the Loss function
+        weight_dict = {"loss": 1, "ssim_loss": 0.1}
+        losses = {"loss": loss, "ssim_loss": lambda x, y: 1 - ssim(x, y)}
         criterion = SetCriterion(losses, weight_dict)
-        model = VSR_CAS(criterion, 31, cfg.scale).cuda()
-        optimizer = optim.Adam(
-            model.parameters(), lr=cfg.lr, weight_decay=1e-8
-        )  ## optimizer 1: Adam
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500)
-        scheduler.by_epoch = True
+        model = VSR_CAS(
+            cfg.factor
+        ).cuda()
+        # optimizer = optim.Adam(
+        #     model.parameters(), lr=2e-4, weight_decay=1e-8
+        # )  ## optimizer 1: Adam
+        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500)
+        model.criterion = criterion
+        optimizer = get_optimizer(model, model.parameters(), **cfg.optimizer_cfg)
+        scheduler = LRScheduler(optimizer, **cfg.scheduler_cfg)
 
         return model, criterion, optimizer, scheduler
 
 
-if __name__ == '__main__':
-    # from torchsummary import summary
+if __name__ == "__main__":
+    hs_channel = 31
+    ms_channel = 3
+    factor = 4
 
-    LR = torch.randn(1, 31, 16, 16).cuda()
-    RGB = torch.randn(1, 3, 128, 128).cuda()
-    # data = sio.loadmat('./P.mat')
-    # P = data['P']
-    # P = torch.FloatTensor(P)
-    up_factor = 8
-    channel = 31
-    patch_size = 128
-    WEIGHT_DECAY = 1e-8  # params of ADAM
-    model = VSR_CAS(channel0=channel, factor=up_factor, P=None, patch_size=patch_size).cuda()
-    pred = model(LR, RGB)
-    print(pred.shape)
-    # summary(model, input_size=[(31, 16, 16), (3, 64, 64)], batch_size=1)
+    if factor == 8:
+        LR = torch.randn(1, 31, 16, 16).cuda()
+        UP = torch.randn(1, 31, 128, 128).cuda()
+        RGB = torch.randn(1, 3, 128, 128).cuda()
+        gt = torch.randn(1, 31, 128, 128).cuda()
+    elif factor == 4:
+        LR = torch.randn(1, 31, 16, 16).cuda()
+        UP = torch.randn(1, 31, 64, 64).cuda()
+        RGB = torch.randn(1, 3, 64, 64).cuda()
+        gt = torch.randn(1, 31, 64, 64).cuda()
+    else:
+        raise ValueError("factor must be 4 or 8")
+
+    model = VSR_CAS(
+        factor=factor,
+    ).cuda()
+
+    model.criterion = nn.L1Loss().cuda()
+
+    sr = model({"gt": gt, "up": UP, "lrhsi": LR, "rgb": RGB}, mode="train")
+    print(sr.shape)

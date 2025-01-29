@@ -4,12 +4,12 @@ import h5py
 import numpy as np
 
 class DummyDataset(data.Dataset):
-    def __init__(self, num_samples=100):
+    def __init__(self, num_samples=100, factor=4):
         self.num_samples = num_samples
-        self.GT = torch.randn(num_samples, 31, 64, 64)
-        self.UP = torch.randn(num_samples, 31, 64, 64)
+        self.GT = torch.randn(num_samples, 31, factor * 16, factor * 16)
+        self.UP = torch.randn(num_samples, 31, factor * 16, factor * 16)
         self.LRHSI = torch.randn(num_samples, 31, 16, 16)
-        self.RGB = torch.randn(num_samples, 3, 64, 64)
+        self.RGB = torch.randn(num_samples, 3, factor * 16, factor * 16)
 
     def __len__(self):
         return self.num_samples

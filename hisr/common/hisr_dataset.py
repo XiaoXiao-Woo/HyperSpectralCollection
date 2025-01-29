@@ -62,7 +62,7 @@ class HISRSession:
                     getattr(self.args.dataset, f"{dataset_name}_train_path")
                 )
         elif dataset_type == "Dummy":
-            dataset = DummyDataset()
+            dataset = DummyDataset(factor=self.args.factor)
         else:
             print(f"{dataset_name} is not supported.")
             raise NotImplementedError(f"{dataset_name} is not supported.")

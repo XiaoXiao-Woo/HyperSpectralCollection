@@ -281,4 +281,4 @@ class Unet(torch.nn.Module):
         decode1 = self.Decoding_block3(decode2, encode1)
         decode0 = self.Decoding_block_End(decode1, encode0)
 
-        return decode0
+        return decode0, encode0

@@ -95,16 +95,20 @@ class VSR_CAS(PatchMergeModule):
     def init_stages(self):
         if self.use_dense:
             # TODO: add in_channels, out_channels with list
+            channel_list = [31, self.num_channel+self.num_channel, 
+                            self.num_channel+self.num_channel, 
+                            self.num_channel+self.num_channel]
             self.fe_conv = nn.ModuleList(
-            [
-                nn.Conv2d(
-                    in_channels=31,
-                    out_channels=self.num_channel,
-                    kernel_size=3,
-                    padding=3 // 2,
-                )
-            for _ in range(self.n_stages + 1)
-            ])
+                [
+                    nn.Conv2d(
+                        in_channels=channel_list[_],
+                        out_channels=self.num_channel,
+                        kernel_size=3,
+                        padding=3 // 2,
+                    )
+                    for _ in range(self.n_stages + 1)
+                ]
+            )
         else:
             self.fe_conv = nn.Conv2d(
                 in_channels=self.hs_channel,
@@ -151,24 +155,22 @@ class VSR_CAS(PatchMergeModule):
             x_now, fe = self.spatial(self.fe_conv[0](lms), pan)
             x_now = x_now + lms
         else:
-            tmp = self.fe_conv(lms)
-            x_now = self.spatial(tmp, pan)
-            x_now = x_now + lms
+            x_now = self.spatial(self.fe_conv(lms), pan)[0] + lms
 
         for i in range(self.n_stages):
             if self.use_dense:
-                sr = self.recon(x_now, lms, ms, pan, self.delta[i], self.eta[i])
-                x_now, fe = self.spatial(
-                    self.fe_conv[i+1](torch.cat((self.fe_conv[0](sr), fe), 1)), pan
-                )
-                x_now = x_now + lms
-
+                if i < self.n_stages - 1:
+                    sr = self.recon(x_now, lms, ms, pan, self.delta[i], self.eta[i])
+                    x_now, fe = self.spatial(
+                        self.fe_conv[i+1](torch.cat((self.fe_conv[0](sr), fe), 1)), pan
+                    )
+                    x_now = x_now + lms
             else:
                 if self.prox:
                     sr = self.recon(x_now, lms, ms, pan, self.delta[i], self.eta[i])
                 else:
                     sr = self.recon(x_now, lms, ms, pan, self.delta[i])
-                x_now = self.spatial(self.fe_conv(sr), pan) + lms
+                x_now = self.spatial(self.fe_conv(sr), pan)[0] + sr
 
         return x_now
 
@@ -195,11 +197,6 @@ class VSR_CAS(PatchMergeModule):
         sr1 = self._forward_implem(**data)
 
         return sr1
-
-    def set_metrics(self, criterion, rgb_range=1.0):
-        self.rgb_range = rgb_range
-        self.criterion = criterion
-
 
 from hisr.models.base_model import HISRModel
 from hisr.common.metrics import SetCriterion
@@ -249,7 +246,7 @@ if __name__ == '__main__':
 
     model = VSR_CAS(
         n_stages=3, hs_channel=hs_channel, ms_channel=ms_channel, factor=factor,
-        featEmbed=True
+        featEmbed=True, num_channel=64, use_dense=True
     ).cuda()
     
     model.criterion = nn.L1Loss().cuda()
